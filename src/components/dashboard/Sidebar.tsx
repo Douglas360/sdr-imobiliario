@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import {
     LayoutDashboard, MessageSquare, Building2, Users,
-    Smartphone, LogOut, ChevronRight
+    Smartphone, LogOut, ChevronRight, Shield
 } from 'lucide-react'
 
 const navItems = [
@@ -16,10 +16,12 @@ const navItems = [
     { href: '/leads', label: 'Leads', icon: Users },
 ]
 
-export function Sidebar({ tenantName }: { tenantName: string }) {
+export function Sidebar({ tenantName, userRole }: { tenantName: string, userRole: string }) {
     const pathname = usePathname()
     const router = useRouter()
     const supabase = createClient()
+
+    const isAdmin = pathname.startsWith('/admin')
 
     async function handleLogout() {
         await supabase.auth.signOut()
@@ -65,6 +67,28 @@ export function Sidebar({ tenantName }: { tenantName: string }) {
                         </Link>
                     )
                 })}
+
+                {/* Divisor Admin - Visível apenas para quem tem role admin */}
+                {userRole === 'admin' && (
+                    <>
+                        <div className="pt-3 pb-1">
+                            <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                                Administração
+                            </p>
+                        </div>
+                        <Link href="/admin"
+                            className={cn(
+                                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group',
+                                isAdmin
+                                    ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
+                                    : 'text-slate-400 hover:bg-[rgb(var(--surface-2))] hover:text-white'
+                            )}>
+                            <Shield className={cn('w-4 h-4 flex-shrink-0', isAdmin ? 'text-amber-400' : 'text-slate-500 group-hover:text-white')} />
+                            Admin
+                            {isAdmin && <ChevronRight className="w-3 h-3 ml-auto text-amber-400" />}
+                        </Link>
+                    </>
+                )}
             </nav>
 
             {/* Logout */}

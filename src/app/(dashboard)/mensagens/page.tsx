@@ -2,22 +2,28 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatPhone, timeAgo, getStatusColor } from '@/lib/utils'
-import { Message, Conversation, Lead } from '@/types'
-import { MessageSquare, Search } from 'lucide-react'
+import { Message, Conversation } from '@/types'
+import { MessageSquare, Search, Loader2, XCircle } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 
 export default function MensagensPage() {
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [selected, setSelected] = useState<string | null>(null)
     const [search, setSearch] = useState('')
+    const [error, setError] = useState<string | null>(null)
+    const [deletingPhone, setDeletingPhone] = useState<string | null>(null)
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const supabase = createClient()
+    const searchParams = useSearchParams()
+    const requestedPhone = searchParams.get('phone')
 
     useEffect(() => {
         loadConversations()
         // Realtime subscription
         const channel = supabase
             .channel('messages')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => loadConversations())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => loadConversations())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => loadConversations())
             .subscribe()
         return () => { supabase.removeChannel(channel) }
     }, [])
@@ -25,6 +31,12 @@ export default function MensagensPage() {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, [selected, conversations])
+
+    useEffect(() => {
+        if (requestedPhone) {
+            setSelected(requestedPhone)
+        }
+    }, [requestedPhone])
 
     async function loadConversations() {
         const { data: messages } = await supabase
@@ -62,7 +74,48 @@ export default function MensagensPage() {
             .sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime())
 
         setConversations(convs)
-        if (!selected && convs.length > 0) setSelected(convs[0].phone)
+        setSelected(currentSelected => {
+            if (requestedPhone && convs.some(conv => conv.phone === requestedPhone)) {
+                return requestedPhone
+            }
+
+            if (currentSelected && convs.some(conv => conv.phone === currentSelected)) {
+                return currentSelected
+            }
+
+            return convs[0]?.phone ?? null
+        })
+    }
+
+    async function handleClearConversation() {
+        if (!activeConv) return
+
+        const phone = activeConv.phone
+        const nome = activeConv.lead_name || formatPhone(phone)
+
+        if (!confirm(`Deseja realmente limpar a conversa de ${nome}? Todas as mensagens serão excluídas do banco de dados.`)) return
+
+        setDeletingPhone(phone)
+        setError(null)
+
+        try {
+            const res = await fetch(`/api/messages/${encodeURIComponent(phone)}`, {
+                method: 'DELETE',
+            })
+            const data = await res.json()
+
+            if (!res.ok || data.error) {
+                throw new Error(data.error || 'Erro ao limpar conversa')
+            }
+
+            const remaining = conversations.filter(conv => conv.phone !== phone)
+            setConversations(remaining)
+            setSelected(remaining[0]?.phone ?? null)
+        } catch (err: any) {
+            setError(err.message || 'Erro ao limpar conversa')
+        } finally {
+            setDeletingPhone(null)
+        }
     }
 
     const filtered = conversations.filter(c =>
@@ -72,7 +125,14 @@ export default function MensagensPage() {
     const activeConv = conversations.find(c => c.phone === selected)
 
     return (
-        <div className="h-[calc(100vh-7rem)] flex gap-4">
+        <div className="space-y-4">
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm">
+                    {error}
+                </div>
+            )}
+
+            <div className="h-[calc(100vh-7rem)] flex gap-4">
             {/* Conversation List */}
             <div className="w-80 flex flex-col card overflow-hidden">
                 <div className="p-4 border-b border-[rgb(var(--border))]">
@@ -133,16 +193,28 @@ export default function MensagensPage() {
                 ) : (
                     <>
                         {/* Header */}
-                        <div className="px-5 py-4 border-b border-[rgb(var(--border))] flex items-center justify-between">
+                        <div className="px-5 py-4 border-b border-[rgb(var(--border))] flex items-center justify-between gap-3">
                             <div>
                                 <p className="text-white font-semibold">{activeConv.lead_name || formatPhone(activeConv.phone)}</p>
                                 <p className="text-slate-500 text-xs">{formatPhone(activeConv.phone)}</p>
                             </div>
-                            {activeConv.lead_status && (
-                                <span className={cn('badge', getStatusColor(activeConv.lead_status))}>
-                                    {activeConv.lead_status}
-                                </span>
-                            )}
+                            <div className="flex items-center gap-3">
+                                {activeConv.lead_status && (
+                                    <span className={cn('badge', getStatusColor(activeConv.lead_status))}>
+                                        {activeConv.lead_status}
+                                    </span>
+                                )}
+                                <button
+                                    onClick={handleClearConversation}
+                                    disabled={deletingPhone === activeConv.phone}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-red-400 border border-red-400/30 hover:bg-red-400/10 transition-all disabled:opacity-50"
+                                >
+                                    {deletingPhone === activeConv.phone
+                                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                                        : <XCircle className="w-4 h-4" />}
+                                    {deletingPhone === activeConv.phone ? 'Limpando...' : 'Limpar conversa'}
+                                </button>
+                            </div>
                         </div>
                         {/* Messages */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -164,6 +236,7 @@ export default function MensagensPage() {
                     </>
                 )}
             </div>
+        </div>
         </div>
     )
 }

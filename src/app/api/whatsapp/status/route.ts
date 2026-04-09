@@ -25,18 +25,25 @@ export async function GET() {
             { headers: { apikey: process.env.EVOLUTION_API_KEY! }, cache: 'no-store' }
         )
         const data = await res.json()
+        const phone = data.instance?.profileJid?.split('@')[0]
         const connected = data.instance?.state === 'open'
         
-        // Update DB if state changed
-        if (tenant.tenant_id && tenant.whatsapp_connected !== connected) {
+        // Update DB if state changed or phone is missing
+        if (tenant.tenant_id) {
             const supabase = createClient()
+            const updates: any = { whatsapp_connected: connected }
+            
+            // Se conectou e temos o telefone, atualiza
+            if (connected && phone) {
+                updates.whatsapp_phone = phone
+            }
+
             await supabase
                 .from('tenants')
-                .update({ whatsapp_connected: connected })
+                .update(updates)
                 .eq('id', tenant.tenant_id)
         }
         
-        const phone = data.instance?.profileJid?.replace('@s.whatsapp.net', '')
         const profileName = data.instance?.profileName
         return NextResponse.json({ connected, phone, profileName })
     } catch {

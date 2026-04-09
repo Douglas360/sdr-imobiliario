@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Building2, Lock, Mail, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Lock, Mail, Eye, EyeOff, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
     const [email, setEmail] = useState('')
@@ -15,16 +15,24 @@ export default function LoginPage() {
 
     async function handleLogin(e: React.FormEvent) {
         e.preventDefault()
+        if (loading) return
+
         setLoading(true)
         setError(null)
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) {
-            setError('Email ou senha incorretos. Tente novamente.')
-        } else {
+
+        try {
+            const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+            if (error) {
+                setError('Email ou senha incorretos. Tente novamente.')
+                return
+            }
+
             router.push('/')
             router.refresh()
+        } finally {
+            setLoading(false)
         }
-        setLoading(false)
     }
 
     return (
@@ -74,6 +82,7 @@ export default function LoginPage() {
                                     onChange={e => setEmail(e.target.value)}
                                     placeholder="seu@email.com"
                                     className="input pl-9"
+                                    disabled={loading}
                                     required
                                 />
                             </div>
@@ -89,18 +98,27 @@ export default function LoginPage() {
                                     onChange={e => setPassword(e.target.value)}
                                     placeholder="••••••••"
                                     className="input pl-9 pr-10"
+                                    disabled={loading}
                                     required
                                 />
                                 <button type="button" onClick={() => setShowPass(!showPass)}
+                                    disabled={loading}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                                     {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                 </button>
                             </div>
                         </div>
 
-                        <button type="submit" disabled={loading} className="btn-primary w-full justify-center py-2.5 mt-2">
-                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                            {loading ? 'Entrando...' : 'Entrar'}
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            aria-busy={loading}
+                            className="btn-primary w-full justify-center py-2.5 mt-2 min-h-11"
+                        >
+                            <span className="inline-flex items-center gap-2">
+                                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                <span>{loading ? 'Entrando...' : 'Entrar'}</span>
+                            </span>
                         </button>
                     </form>
 

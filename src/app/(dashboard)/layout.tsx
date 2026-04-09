@@ -14,10 +14,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
         .single()
 
     const tenantName = profile?.tenant?.name || 'Imobiliária'
+    const userRole = profile?.role || 'viewer'
 
     return (
         <div className="flex min-h-screen">
-            <Sidebar tenantName={tenantName} />
+            <Sidebar tenantName={tenantName} userRole={userRole} />
             <main className="flex-1 flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto p-6 md:p-8">
                     {children}

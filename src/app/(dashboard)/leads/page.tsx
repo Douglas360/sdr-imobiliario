@@ -3,13 +3,15 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Lead } from '@/types'
 import { cn, formatPhone, formatCurrency, timeAgo, getStatusColor } from '@/lib/utils'
-import { Users, Search, Phone, DollarSign, MapPin, Clock } from 'lucide-react'
+import { Users, Search, Phone, DollarSign, MapPin, Clock, Loader2, Trash2 } from 'lucide-react'
 
 export default function LeadsPage() {
     const [leads, setLeads] = useState<Lead[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [filterStatus, setFilterStatus] = useState('')
+    const [error, setError] = useState<string | null>(null)
+    const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null)
     const supabase = createClient()
 
     useEffect(() => {
@@ -30,6 +32,30 @@ export default function LeadsPage() {
     async function updateStatus(id: string, status: Lead['status']) {
         await supabase.from('leads').update({ status }).eq('id', id)
         setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l))
+    }
+
+    async function handleDeleteLead(lead: Lead) {
+        const nome = lead.name || formatPhone(lead.phone)
+
+        if (!confirm(`Deseja realmente excluir o lead ${nome}? Todas as mensagens vinculadas também serão removidas do banco de dados.`)) return
+
+        setDeletingLeadId(lead.id)
+        setError(null)
+
+        try {
+            const res = await fetch(`/api/leads/${lead.id}`, { method: 'DELETE' })
+            const data = await res.json()
+
+            if (!res.ok || data.error) {
+                throw new Error(data.error || 'Erro ao excluir lead')
+            }
+
+            setLeads(prev => prev.filter(item => item.id !== lead.id))
+        } catch (err: any) {
+            setError(err.message || 'Erro ao excluir lead')
+        } finally {
+            setDeletingLeadId(null)
+        }
     }
 
     const filtered = leads.filter(l => {
@@ -54,6 +80,12 @@ export default function LeadsPage() {
                     <p className="text-slate-400 text-sm mt-1">{leads.length} leads qualificados pelo Corretor Digital</p>
                 </div>
             </div>
+
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm">
+                    {error}
+                </div>
+            )}
 
             {/* Status Tabs */}
             <div className="flex gap-2 flex-wrap">
@@ -132,6 +164,7 @@ export default function LeadsPage() {
                                     <td className="px-4 py-3">
                                         <select value={lead.status}
                                             onChange={e => updateStatus(lead.id, e.target.value as Lead['status'])}
+                                            disabled={deletingLeadId === lead.id}
                                             className={cn('badge cursor-pointer border-0 outline-none appearance-none bg-transparent font-medium', getStatusColor(lead.status))}>
                                             <option value="Frio">Frio</option>
                                             <option value="Quente">Quente</option>
@@ -146,10 +179,22 @@ export default function LeadsPage() {
                                         </span>
                                     </td>
                                     <td className="px-4 py-3">
-                                        <a href={`/mensagens?phone=${lead.phone}`}
-                                            className="text-brand-400 hover:text-brand-300 text-xs font-medium transition-colors">
-                                            Ver chat →
-                                        </a>
+                                        <div className="flex items-center gap-3">
+                                            <a href={`/mensagens?phone=${encodeURIComponent(lead.phone)}`}
+                                                className="text-brand-400 hover:text-brand-300 text-xs font-medium transition-colors">
+                                                Ver chat →
+                                            </a>
+                                            <button
+                                                onClick={() => handleDeleteLead(lead)}
+                                                disabled={deletingLeadId === lead.id}
+                                                className="flex items-center gap-1.5 text-red-400 hover:text-red-300 text-xs font-medium transition-colors disabled:opacity-50"
+                                            >
+                                                {deletingLeadId === lead.id
+                                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                    : <Trash2 className="w-3.5 h-3.5" />}
+                                                {deletingLeadId === lead.id ? 'Excluindo...' : 'Excluir'}
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

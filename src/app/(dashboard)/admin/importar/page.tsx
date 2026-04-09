@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { Upload, FileJson, AlertCircle, CheckCircle2, Loader2, RefreshCw } from 'lucide-react'
+import { Upload, FileJson, AlertCircle, CheckCircle2, Loader2, RefreshCw, Download } from 'lucide-react'
 
 type ImportPhase = 'idle' | 'uploading' | 'success' | 'error'
 
@@ -118,6 +118,36 @@ export default function AdminImportarPage() {
         }
     }
 
+    const downloadJsonModel = () => {
+        const model = [
+            {
+                "id_imovel": "REF-12345",
+                "titulo": "Casa Luxuosa com Piscina",
+                "valor": 1500000,
+                "bairro": "Centro",
+                "area": 250,
+                "quartos": 4,
+                "vagas": 2,
+                "descricao": "Linda casa em bairro nobre, excelente para a família.",
+                "link_site": "https://seusite.com.br/imoveis/1",
+                "tem_piscina": true,
+                "tem_portaria": true,
+                "aceita_pet": true,
+                "tem_academia": false,
+                "tem_lazer": true,
+                "disponivel": true
+            }
+        ]
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(model, null, 2))
+        const downloadAnchorNode = document.createElement('a')
+        downloadAnchorNode.setAttribute("href", dataStr)
+        downloadAnchorNode.setAttribute("download", "modelo_importacao_imoveis.json")
+        document.body.appendChild(downloadAnchorNode)
+        downloadAnchorNode.click()
+        downloadAnchorNode.remove()
+    }
+
     return (
         <div className="max-w-4xl mx-auto space-y-6">
             <div>
@@ -164,18 +194,26 @@ export default function AdminImportarPage() {
                                         ref={fileInputRef}
                                         onChange={handleFileUpload}
                                     />
-                                    <button
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="text-xs flex items-center gap-1 text-slate-400 hover:text-white transition-colors bg-[rgb(var(--surface-2))] px-3 py-1.5 rounded-lg border border-transparent hover:border-slate-700"
-                                    >
-                                        <FileJson className="w-3.5 h-3.5" /> Fazer Upload de Arquivo .json
-                                    </button>
+                                    <div className="flex gap-2 items-center">
+                                        <button
+                                            onClick={downloadJsonModel}
+                                            className="text-xs flex items-center gap-1 text-slate-400 hover:text-white transition-colors bg-[rgb(var(--surface-2))] px-3 py-1.5 rounded-lg border border-transparent hover:border-slate-700"
+                                        >
+                                            <Download className="w-3.5 h-3.5" /> Baixar Modelo
+                                        </button>
+                                        <button
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="text-xs flex items-center gap-1 text-slate-400 hover:text-white transition-colors bg-[rgb(var(--surface-2))] px-3 py-1.5 rounded-lg border border-transparent hover:border-slate-700"
+                                        >
+                                            <FileJson className="w-3.5 h-3.5" /> Fazer Upload de Arquivo .json
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             <textarea
                                 value={jsonInput}
                                 onChange={(e) => setJsonInput(e.target.value)}
-                                placeholder={'[\n  {\n    "titulo": "Casa Luxuosa",\n    "valor": 1500000,\n    "quartos": 4,\n    "link_site": "https://meusite.com/imoveis/1"\n  }\n]'}
+                                placeholder={'[\n  {\n    "id_imovel": "REF-123",\n    "titulo": "Casa Luxuosa",\n    "valor": 1500000,\n    "bairro": "Centro",\n    "area": 250,\n    "quartos": 4,\n    "vagas": 2,\n    "descricao": "Linda casa...",\n    "link_site": "https://site.com/1",\n    "tem_piscina": true,\n    "tem_portaria": true,\n    "aceita_pet": true,\n    "tem_academia": false,\n    "tem_lazer": true,\n    "disponivel": true\n  }\n]'}
                                 className="input w-full font-mono text-sm h-64 resize-y"
                             />
                             <p className="text-xs text-slate-500">
