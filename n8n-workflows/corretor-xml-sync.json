@@ -1,0 +1,200 @@
+{
+    "name": "SDR Imobiliário - Sync XML de Imóveis → Supabase",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hoursInterval": 6
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger",
+            "name": "Agendar - A cada 6h",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                240,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "={{ $vars.XML_FEED_URL }}",
+                "options": {
+                    "timeout": 30000,
+                    "response": {
+                        "response": {
+                            "responseFormat": "text"
+                        }
+                    }
+                }
+            },
+            "id": "fetch-xml",
+            "name": "Baixar XML de Imóveis",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "sourceData": "string",
+                "dataPropertyName": "data",
+                "options": {}
+            },
+            "id": "parse-xml",
+            "name": "Parsear XML",
+            "type": "n8n-nodes-base.xml",
+            "typeVersion": 1,
+            "position": [
+                680,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Transforma XML de imóveis para o formato Supabase\nconst xmlData = $input.first().json;\nlet listings = [];\n\n// Padrão VivaReal/ZAP\nif (xmlData.ListingDataFeed?.Listings?.Listing) listings = xmlData.ListingDataFeed.Listings.Listing;\nelse if (xmlData.imoveis?.imovel) listings = xmlData.imoveis.imovel;\nelse if (xmlData.rss?.channel?.item) listings = xmlData.rss.channel.item;\n\nif (!Array.isArray(listings)) listings = [listings];\n\nconst tenantId = $vars.TENANT_ID; // ID do tenant no Supabase\n\nconst imoveis = listings.slice(0, 200).map(item => {\n  const preco = parseFloat(\n    (item.ListPrice?.[0] || item.preco || item.price || '0').toString().replace(/[^0-9.]/g, '')\n  ) || 0;\n  const quartos = parseInt(item.BedroomsTotal?.[0] || item.quartos || item.dormitorios || '0') || 0;\n  const vagas = parseInt(item.ParkingSpaces?.[0] || item.vagas || item.garagem || '0') || 0;\n  const bairro = item.Neighborhood?.[0] || item.bairro || item.neighborhood || item.City?.[0] || '';\n  const titulo = item.Title?.[0] || item.titulo || item.title || `Imóvel ${quartos}Q - ${bairro}`;\n  const linkSite = item.ViewUrl?.[0] || item.link || item.url || '';\n  const descricao = (item.Description?.[0] || item.descricao || item.description || '').toString().substring(0, 500);\n  const idImovel = (item.ListingID?.[0] || item.codigo || item.id || linkSite.split('/').pop() || Math.random().toString(36).substring(7)).toString();\n\n  const descLower = descricao.toLowerCase();\n\n  return {\n    tenant_id: tenantId,\n    id_imovel: idImovel,\n    titulo,\n    bairro,\n    valor: preco,\n    quartos,\n    vagas,\n    link_site: linkSite,\n    descricao,\n    tem_piscina: descLower.includes('piscina'),\n    tem_portaria: descLower.includes('portaria 24') || descLower.includes('segurança 24'),\n    aceita_pet: descLower.includes('pet') || descLower.includes('animais permitidos'),\n    tem_academia: descLower.includes('academia') || descLower.includes('fitness'),\n    tem_lazer: descLower.includes('lazer') || descLower.includes('churrasqueira'),\n    disponivel: true,\n    ultima_atualizacao: new Date().toISOString()\n  };\n}).filter(i => i.valor > 0 && i.titulo);\n\nreturn [{ json: { imoveis, total: imoveis.length } }];\n"
+            },
+            "id": "transform-xml",
+            "name": "Transformar para Supabase",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                900,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "={{ $vars.SUPABASE_URL }}/rest/v1/imoveis",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "={{ $vars.SUPABASE_SERVICE_KEY }}"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "=Bearer {{ $vars.SUPABASE_SERVICE_KEY }}"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        },
+                        {
+                            "name": "Prefer",
+                            "value": "resolution=merge-duplicates,return=minimal"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "contentType": "json",
+                "body": "={{ JSON.stringify($json.imoveis) }}",
+                "options": {
+                    "timeout": 60000
+                }
+            },
+            "id": "upsert-supabase",
+            "name": "Upsert no Supabase",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1120,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const result = $input.first();\nconst total = $('Transformar para Supabase').first().json.total;\nconsole.log(`[XML Sync] ${total} imóveis sincronizados com Supabase. Status: ${result.json.$response?.statusCode || 'ok'}`);\nreturn [{ json: { success: true, total, timestamp: new Date().toISOString() } }];\n"
+            },
+            "id": "log-result",
+            "name": "Log Resultado",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1340,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Agendar - A cada 6h": {
+            "main": [
+                [
+                    {
+                        "node": "Baixar XML de Imóveis",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Baixar XML de Imóveis": {
+            "main": [
+                [
+                    {
+                        "node": "Parsear XML",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parsear XML": {
+            "main": [
+                [
+                    {
+                        "node": "Transformar para Supabase",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Transformar para Supabase": {
+            "main": [
+                [
+                    {
+                        "node": "Upsert no Supabase",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Upsert no Supabase": {
+            "main": [
+                [
+                    {
+                        "node": "Log Resultado",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "settings": {
+        "executionOrder": "v1",
+        "saveManualExecutions": true
+    },
+    "tags": [
+        {
+            "name": "Imobiliária"
+        },
+        {
+            "name": "XML Sync"
+        },
+        {
+            "name": "Supabase"
+        }
+    ]
+}

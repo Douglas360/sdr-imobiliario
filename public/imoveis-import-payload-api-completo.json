@@ -1,0 +1,22 @@
+{
+  "tenant_id": "SUBSTITUA_PELO_TENANT_ID",
+  "imoveis": [
+    {
+      "id_imovel": "APTO-0001",
+      "titulo": "Apartamento Alto Padrao com Varanda Gourmet",
+      "bairro": "Jardins",
+      "valor": 1250000,
+      "quartos": 3,
+      "vagas": 2,
+      "area": 128,
+      "descricao": "Apartamento amplo, reformado, com varanda gourmet, armarios planejados, portaria 24 horas, lazer completo e aceita pets.",
+      "link_site": "https://exemplo.com/imoveis/apto-0001",
+      "tem_piscina": true,
+      "tem_portaria": true,
+      "aceita_pet": true,
+      "tem_academia": true,
+      "tem_lazer": true,
+      "disponivel": true
+    }
+  ]
+}

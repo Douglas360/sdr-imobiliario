@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 13 17 27;
+    --surface: 20 26 40;
+    --surface-2: 28 36 56;
+    --border: 40 52 80;
+    --text-primary: 240 244 255;
+    --text-secondary: 148 163 184;
+    --brand: 79 110 247;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    background-color: rgb(var(--background));
+    color: rgb(var(--text-primary));
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: rgb(var(--background)); }
+  ::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 2px; }
+}
+
+@layer components {
+  .glass {
+    background: rgba(20, 26, 40, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(40, 52, 80, 0.6);
+  }
+
+  .card {
+    @apply bg-[rgb(var(--surface))] border border-[rgb(var(--border))] rounded-xl;
+  }
+
+  .btn-primary {
+    @apply bg-brand-500 hover:bg-brand-600 text-white font-medium px-4 py-2 rounded-lg
+           transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-[rgb(var(--surface-2))] hover:bg-[rgb(var(--border))] text-[rgb(var(--text-primary))]
+           font-medium px-4 py-2 rounded-lg border border-[rgb(var(--border))] transition-all duration-200
+           flex items-center gap-2;
+  }
+
+  .input {
+    @apply bg-[rgb(var(--surface-2))] border border-[rgb(var(--border))] rounded-lg px-3 py-2
+           text-[rgb(var(--text-primary))] placeholder-[rgb(var(--text-secondary))] outline-none
+           focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30 transition-all duration-200 w-full;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+}

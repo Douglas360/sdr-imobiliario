@@ -1,0 +1,588 @@
+{
+  "name": "SDR Imobiliário - Corretor Inteligente (Supabase)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-corretor",
+        "options": {}
+      },
+      "id": "a25cf444-406c-455d-a7ac-156c03479dc4",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [304, -128],
+      "webhookId": "whatsapp-corretor-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9e0fe445-de4e-48f0-811f-6e02e9a1110e",
+              "name": "leadName",
+              "value": "={{ $json.body.data.pushName }}",
+              "type": "string"
+            },
+            {
+              "id": "6632bb54-bc85-481f-a74e-51bc2e87c949",
+              "name": "phone",
+              "value": "={{ $json.body.data.key.remoteJid.split('@')[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "2e476188-1d2e-47a5-9a42-caa52b296344",
+              "name": "message",
+              "value": "={{ $json.body.data.message.conversation }}",
+              "type": "string"
+            },
+            {
+              "id": "0a5208d3-08c1-4e41-ada2-9753cb5907db",
+              "name": "instanceName",
+              "value": "={{ $json.body.instance }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [528, -128],
+      "id": "d0717cee-2019-4b4a-a88c-0cb52c89c9bd",
+      "name": "Normalizar"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a598f18a-1f40-4204-8338-be8236ae2d72",
+              "name": "url",
+              "value": "https://aphyllous-nonostensively-chace.ngrok-free.dev/",
+              "type": "string"
+            },
+            {
+              "id": "fb904e06-18c5-4d0c-8e89-48a838ead08f",
+              "name": "n8n_webhook_key",
+              "value": "8ee807f3fb5fce840177112b703a50fc395291ad3c9c958c7d345163043c7bb1",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [736, -128],
+      "id": "8ccd93a9-9449-4b76-9e9b-2171c37af7bc",
+      "name": "BASE_URL"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "tenants",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "evolution_instance",
+              "keyValue": "={{ $('Normalizar').item.json.instanceName }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [976, -144],
+      "id": "6fac0075-e150-4367-b494-02100d789750",
+      "name": "Buscar Tenant (Imobilaria)",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FHqmYVMlmNhyFMv0",
+          "name": "Supabase account-SDR-IMOBI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "larger"
+              }
+            },
+            {
+              "id": "00fde1e1-d298-44ba-a4e7-2254b2b952a4",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "bfaffa01-3905-42ed-9868-2be35da73f23",
+      "name": "Tenant Existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1184, -144]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('BASE_URL').item.json.url }}api/webhook/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-webhook-secret",
+              "value": "={{ $('BASE_URL').item.json.n8n_webhook_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $('Normalizar').first().json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $('Normalizar').first().json.message }}"
+            },
+            {
+              "name": "direction",
+              "value": "in"
+            },
+            {
+              "name": "tenant_instance",
+              "value": "={{ $('Normalizar').first().json.instanceName }}"
+            },
+            {
+              "name": "lead_name",
+              "value": "={{ $('Normalizar').item.json.leadName }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a0ee2578-94f4-4031-ab42-b9e6db40d13e",
+      "name": "Webhook In → SaaS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1472, -160]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "leads",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "tenant_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Buscar Tenant (Imobilaria)').item.json.id }}"
+            },
+            {
+              "keyName": "phone",
+              "condition": "eq",
+              "keyValue": "={{ $('Normalizar').first().json.phone }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1776, -352],
+      "id": "065ec340-2866-45e3-b4ed-68033c30f588",
+      "name": "Buscar Lead",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FHqmYVMlmNhyFMv0",
+          "name": "Supabase account-SDR-IMOBI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "imoveis",
+        "returnAll": true,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "tenant_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Buscar Tenant (Imobilaria)').item.json.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1776, -160],
+      "id": "a15de67a-967f-4daa-9625-94171881c2cd",
+      "name": "Buscar Imoveis",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FHqmYVMlmNhyFMv0",
+          "name": "Supabase account-SDR-IMOBI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "messages",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "tenant_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Buscar Tenant (Imobilaria)').item.json.id }}"
+            },
+            {
+              "keyName": "phone",
+              "condition": "eq",
+              "keyValue": "={{ $('Normalizar').item.json.phone }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1792, 32],
+      "id": "fdea2758-6fc2-4081-b9fa-a94d34973256",
+      "name": "Buscar Mensagens",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FHqmYVMlmNhyFMv0",
+          "name": "Supabase account-SDR-IMOBI"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "b1c2d3e4-f5a6-7890-bcde-f12345678901",
+      "name": "Aguardar Buscas",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [2080, -160]
+    },
+    {
+      "parameters": {
+        "jsCode": "const message = $('Normalizar').first().json.message;\nconst phone = $('Normalizar').first().json.phone;\nconst leadNamePush = $('Normalizar').first().json.leadName;\nconst leadData = $('Buscar Lead').all();\nconst historicoData = $('Buscar Mensagens').all();\nconst imoveisData = $('Buscar Imoveis').all().map(i => i.json) || [];\n\nconst lead = leadData.length > 0 ? leadData[0].json : null;\n\n// Limitar às últimas 15 mensagens para não estourar o contexto\nlet historico = 'Primeira mensagem do lead.';\nif (historicoData && historicoData.length > 0) {\n  const ultimas = historicoData.slice(-15);\n  historico = ultimas\n    .map(m => m.json)\n    .map(m => `${m.direction === 'in' ? 'Lead' : 'Bot'}: ${m.content}`)\n    .join('\\n');\n}\n\n// Formatar catálogo com link\nconst imoveisStr = imoveisData.slice(0, 15).map(i =>\n  `• ${i.titulo} | ${i.bairro || 'S/bairro'} | R$ ${Number(i.valor || 0).toLocaleString('pt-BR')} | ${i.quartos || 0} quartos | ${i.vagas || 0} vagas | ${i.link_site || 'sem link'}`\n).join('\\n') || 'Sem imóveis cadastrados.';\n\nreturn [{\n  json: {\n    message,\n    phone,\n    nome: lead?.name || leadNamePush || '',\n    orcamento: lead?.budget || '',\n    bairro: lead?.neighborhood || '',\n    isNewLead: !lead,\n    statusAtual: lead?.status || 'novo',\n    historico,\n    catalogo: imoveisStr,\n    totalImoveis: imoveisData.length\n  }\n}];"
+      },
+      "id": "103f2a2e-deee-4e66-894b-deeda5f2583f",
+      "name": "Preparar Contexto AI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2272, -160]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=DADOS JÁ COLETADOS DO LEAD:\nNome: {{ $json.nome || 'não informado' }}\nOrçamento: {{ $json.orcamento || 'não informado' }}\nLocalização: {{ $json.bairro || 'não informado' }}\n\nHISTÓRICO DA CONVERSA:\n{{ $json.historico }}\n\nCATÁLOGO DE IMÓVEIS DISPONÍVEIS:\n{{ $json.catalogo }}\n\nMENSAGEM ATUAL DO LEAD:\n{{ $json.message }}",
+        "options": {
+          "systemMessage": "Você é Sofia, assistente virtual de uma imobiliária. Atenda leads pelo WhatsApp com simpatia e profissionalismo.\n\nSEU OBJETIVO:\nColetar informações do lead de forma natural e qualificá-lo para os corretores.\n\nCRITÉRIOS PARA QUALIFICAÇÃO (precisa de 3 dos 4):\n1. orçamento — quanto pretende investir ou pagar de aluguel\n2. bairro/localização — onde quer morar ou região de interesse\n3. tipo_imovel — casa, apartamento, sala comercial, etc.\n4. finalidade — compra ou aluguel\n\nREGRAS DE CONDUTA:\n- Mensagens curtas e diretas (máximo 4 linhas)\n- Linguagem informal e acolhedora, sem ser informal demais\n- NÃO use asteriscos, hashtags ou markdown — o WhatsApp não renderiza\n- Colete informações ao longo da conversa de forma natural, sem parecer um formulário\n- Quando o lead mencionar imóveis ou quando já estiver qualificado, apresente até 3 opções do catálogo adaptadas ao perfil, com o link\n- Quando o lead atingir 3 critérios, comunique que vai conectar com um corretor e use ação 'qualificado'\n- Se o lead pedir explicitamente para agendar uma visita, use ação 'agendar'\n\nFORMATO DE RESPOSTA OBRIGATÓRIO:\nResponda SEMPRE e SOMENTE com JSON válido, sem texto fora do JSON.\n{\"mensagem\":\"texto da resposta sem markdown\",\"acao\":\"continuar\",\"nome\":\"\",\"orcamento\":\"\",\"bairro\":\"\",\"tipo_imovel\":\"\",\"finalidade\":\"\"}\n\nValores para 'acao': continuar | qualificado | agendar"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [2480, -160],
+      "id": "ec9f54d6-a788-4c7a-82c7-6de0af37dc91",
+      "name": "SDR AI"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [2480, 32],
+      "id": "0eb219d7-58cf-47bc-9d38-274e1c632296",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "ZAnUNfUUeWHQDobe",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiRaw = $input.first().json;\nlet ai = {\n  mensagem: 'Olá! Como posso te ajudar?',\n  acao: 'continuar',\n  nome: '',\n  orcamento: '',\n  bairro: '',\n  tipo_imovel: '',\n  finalidade: ''\n};\ntry {\n  const raw = (aiRaw.output || aiRaw.text || aiRaw.content || '');\n  let cleanText = raw.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  const match = cleanText.match(/{[\\s\\S]*}/);\n  if (match) ai = { ...ai, ...JSON.parse(match[0]) };\n} catch(e) {}\n\nreturn [{ json: {\n  ...ai,\n  instanceName: $('Normalizar').first().json.instanceName,\n  phone: $('Normalizar').first().json.phone,\n  statusAnterior: $('Preparar Contexto AI').first().json.statusAtual\n} }];"
+      },
+      "id": "218a647f-cea4-42fc-9f61-505a550581f6",
+      "name": "Parse AI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2720, -160]
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "={{ $json.instanceName }}",
+        "remoteJid": "={{ $json.phone }}",
+        "messageText": "={{ $json.mensagem }}",
+        "options_message": {}
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [2960, -160],
+      "id": "e657204d-86c2-4af4-b2c6-72634c0865e1",
+      "name": "Enviar Resposta",
+      "credentials": {
+        "evolutionApi": {
+          "id": "f7yZk8oyuxSpqojz",
+          "name": "Evolution account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('BASE_URL').first().json.url }}api/webhook/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-webhook-secret",
+              "value": "={{ $('BASE_URL').first().json.n8n_webhook_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $('Parse AI').item.json.phone }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $('Parse AI').item.json.mensagem }}"
+            },
+            {
+              "name": "direction",
+              "value": "out"
+            },
+            {
+              "name": "tenant_instance",
+              "value": "={{ $('Normalizar').first().json.instanceName }}"
+            },
+            {
+              "name": "lead_status",
+              "value": "={{ $('Parse AI').item.json.acao === 'agendar' ? 'Agendou Visita' : ($('Parse AI').item.json.acao === 'qualificado' ? 'Quente' : 'Frio') }}"
+            },
+            {
+              "name": "lead_name",
+              "value": "={{ $('Parse AI').item.json.nome || '' }}"
+            },
+            {
+              "name": "lead_budget",
+              "value": "={{ $('Parse AI').item.json.orcamento || '' }}"
+            },
+            {
+              "name": "lead_neighborhood",
+              "value": "={{ $('Parse AI').item.json.bairro || '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "12ab6117-7540-4dd2-8cda-ce7e11b95484",
+      "name": "Webhook Out → SaaS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3200, -160]
+    },
+    {
+      "parameters": {
+        "jsCode": "const acao = $('Parse AI').first().json.acao || 'continuar';\nconst statusAnterior = $('Parse AI').first().json.statusAnterior || 'novo';\n\nconst jaQualificado = statusAnterior === 'Quente' || statusAnterior === 'Agendou Visita';\nconst acaoQualifica = acao === 'qualificado' || acao === 'agendar';\n\nreturn [{ json: {\n  deveNotificar: acaoQualifica && !jaQualificado,\n  acao,\n  nome: $('Parse AI').first().json.nome || 'Não informado',\n  phone: $('Parse AI').first().json.phone,\n  orcamento: $('Parse AI').first().json.orcamento || 'Não informado',\n  bairro: $('Parse AI').first().json.bairro || 'Não informado',\n  tipo_imovel: $('Parse AI').first().json.tipo_imovel || 'Não informado',\n  finalidade: $('Parse AI').first().json.finalidade || 'Não informado',\n  instanceName: $('Normalizar').first().json.instanceName\n} }];"
+      },
+      "id": "check-qualificacao-node-001",
+      "name": "Check Qualificação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3440, -160]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "deve-notificar-check",
+              "leftValue": "={{ $json.deveNotificar }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "917463f4-9470-4f95-805e-47ff5234dab2",
+      "name": "Lead Qualificado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [3680, -160]
+    },
+    {
+      "parameters": {
+        "url": "={{ $vars.EVOLUTION_API_URL }}/message/sendText/{{ $json.instanceName }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $vars.EVOLUTION_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $vars.CORRETOR_NUMERO }}"
+            },
+            {
+              "name": "text",
+              "value": "=🔥 NOVO LEAD QUALIFICADO!\n\n👤 Nome: {{ $json.nome }}\n📞 Telefone: {{ $json.phone }}\n💰 Orçamento: {{ $json.orcamento }}\n📍 Localização: {{ $json.bairro }}\n🏠 Tipo: {{ $json.tipo_imovel }}\n🎯 Finalidade: {{ $json.finalidade }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "78a416ee-c7f9-4cdc-b672-945536a6c1df",
+      "name": "Notificar Corretor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3920, -160]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [[{ "node": "Normalizar", "type": "main", "index": 0 }]]
+    },
+    "Normalizar": {
+      "main": [[{ "node": "BASE_URL", "type": "main", "index": 0 }]]
+    },
+    "BASE_URL": {
+      "main": [[{ "node": "Buscar Tenant (Imobilaria)", "type": "main", "index": 0 }]]
+    },
+    "Buscar Tenant (Imobilaria)": {
+      "main": [[{ "node": "Tenant Existe?", "type": "main", "index": 0 }]]
+    },
+    "Tenant Existe?": {
+      "main": [[{ "node": "Webhook In → SaaS", "type": "main", "index": 0 }]]
+    },
+    "Webhook In → SaaS": {
+      "main": [[
+        { "node": "Buscar Lead", "type": "main", "index": 0 },
+        { "node": "Buscar Imoveis", "type": "main", "index": 0 },
+        { "node": "Buscar Mensagens", "type": "main", "index": 0 }
+      ]]
+    },
+    "Buscar Lead": {
+      "main": [[{ "node": "Aguardar Buscas", "type": "main", "index": 0 }]]
+    },
+    "Buscar Imoveis": {
+      "main": [[{ "node": "Aguardar Buscas", "type": "main", "index": 1 }]]
+    },
+    "Buscar Mensagens": {
+      "main": [[{ "node": "Aguardar Buscas", "type": "main", "index": 2 }]]
+    },
+    "Aguardar Buscas": {
+      "main": [[{ "node": "Preparar Contexto AI", "type": "main", "index": 0 }]]
+    },
+    "Preparar Contexto AI": {
+      "main": [[{ "node": "SDR AI", "type": "main", "index": 0 }]]
+    },
+    "SDR AI": {
+      "main": [[{ "node": "Parse AI", "type": "main", "index": 0 }]]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [[{ "node": "SDR AI", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Parse AI": {
+      "main": [[{ "node": "Enviar Resposta", "type": "main", "index": 0 }]]
+    },
+    "Enviar Resposta": {
+      "main": [[{ "node": "Webhook Out → SaaS", "type": "main", "index": 0 }]]
+    },
+    "Webhook Out → SaaS": {
+      "main": [[{ "node": "Check Qualificação", "type": "main", "index": 0 }]]
+    },
+    "Check Qualificação": {
+      "main": [[{ "node": "Lead Qualificado?", "type": "main", "index": 0 }]]
+    },
+    "Lead Qualificado?": {
+      "main": [[{ "node": "Notificar Corretor", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "6307dbd5-e18a-4afb-99f4-08a52a15eef3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bd34db8c4ce7f965244f6548d4b72e82aba69114a129e40a5dbfcb78944ed041"
+  },
+  "id": "7yndx0nL0VBLygDD",
+  "tags": [
+    {
+      "updatedAt": "2026-03-04T21:45:54.355Z",
+      "createdAt": "2026-03-04T21:45:54.355Z",
+      "id": "5JLWWDQmlw2owqSJ",
+      "name": "SDR"
+    },
+    {
+      "updatedAt": "2026-03-04T21:45:54.321Z",
+      "createdAt": "2026-03-04T21:45:54.321Z",
+      "id": "XIcZxfwTlkAbL2Pa",
+      "name": "WhatsApp"
+    },
+    {
+      "updatedAt": "2026-03-04T21:45:54.120Z",
+      "createdAt": "2026-03-04T21:45:54.120Z",
+      "id": "YSEuVNQh19TGULeO",
+      "name": "Imobiliária"
+    }
+  ]
+}
