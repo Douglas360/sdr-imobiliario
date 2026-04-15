@@ -24,16 +24,16 @@ export async function middleware(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     const pathname = request.nextUrl.pathname
 
-    // Rotas públicas
+    // Rotas públicas (landing page + login + APIs)
     const publicRoutes = ['/login', '/api/webhook']
-    const isPublic = publicRoutes.some(r => pathname.startsWith(r))
+    const isPublic = pathname === '/' || publicRoutes.some(r => pathname.startsWith(r))
 
     if (!user && !isPublic) {
         return NextResponse.redirect(new URL('/login', request.url))
     }
 
     if (user && pathname === '/login') {
-        return NextResponse.redirect(new URL('/', request.url))
+        return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
     return supabaseResponse
